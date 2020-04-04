@@ -1,0 +1,14 @@
+C:\Users\tzr\source\repos\presser\bin\Release\presser.exe.config
+C:\Users\tzr\source\repos\presser\bin\Release\presser.exe
+C:\Users\tzr\source\repos\presser\bin\Release\presser.pdb
+C:\Users\tzr\source\repos\presser\obj\Release\presser.csprojAssemblyReference.cache
+C:\Users\tzr\source\repos\presser\obj\Release\MainWindow.g.cs
+C:\Users\tzr\source\repos\presser\obj\Release\App.g.cs
+C:\Users\tzr\source\repos\presser\obj\Release\presser_MarkupCompile.cache
+C:\Users\tzr\source\repos\presser\obj\Release\presser_MarkupCompile.lref
+C:\Users\tzr\source\repos\presser\obj\Release\MainWindow.baml
+C:\Users\tzr\source\repos\presser\obj\Release\presser.g.resources
+C:\Users\tzr\source\repos\presser\obj\Release\presser.Properties.Resources.resources
+C:\Users\tzr\source\repos\presser\obj\Release\presser.csproj.GenerateResource.cache
+C:\Users\tzr\source\repos\presser\obj\Release\presser.exe
+C:\Users\tzr\source\repos\presser\obj\Release\presser.pdb
