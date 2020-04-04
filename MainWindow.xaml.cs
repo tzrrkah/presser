@@ -19,18 +19,21 @@ using Microsoft.Win32;
 using System.Xml;
 using Gma.System.MouseKeyHook;
 using System.Windows.Interop;
-
+using System.Timers;
 namespace presser
 {
     public partial class MainWindow : Window
     {
         KeyboardListener KListener = new KeyboardListener();
         bool isRunning = false, mouseTowasd = false;
+        public bool chkMouseMv=false;
         btnState button1State = btnState.off, button2State = btnState.off, 
             button3State= btnState.off, button4State = btnState.off,
             button5State = btnState.off, lClkState= btnState.off;
-        int timer1,timer2,timer3,timer4, timer5, lClkTimer, xVal1,yVal1, xVal2, yVal2,
+        int timer1, timer2, timer3, timer4, timer5, lClkTimer, xVal1, yVal1, xVal2, yVal2,
             xVal3, yVal3, xVal4, yVal4, xVal5, yVal5;
+        public static System.Timers.Timer mTimer;
+        int mouseChkInterval;
         Key b1Key,b2Key,b3Key,b4Key,b5Key,startKey,stopKey,pixelKey;
         Color color1, color2, color3, color4, color5;
         List<Task> tlist = new List<Task>();
@@ -79,37 +82,49 @@ namespace presser
         private void mouseMv(Object sender,MouseEventExtArgs e)
         {
             //todo timer
-            if (mouseTowasd==true)
+            if (mouseTowasd==true && isRunning==true)
             {
-                bTokenSource = new CancellationTokenSource();
-                CancellationToken bToken = bTokenSource.Token;
-                string temp = "";
-                //currPoint= new Point();
-                POINT p = new POINT();
-
-                if (GetCursorPos(out p))
+                if (chkMouseMv==true)
                 {
-                    //prevPoint = PointToScreen(currPoint);
-                    writeToTbIn(p.Y.ToString());
-                    if (p.X < prevPoint.X)
-                    { 
-                        temp = "L"; 
-                    }
-                    if (p.X > prevPoint.X)
-                    { 
-                        temp += "R"; 
-                    }
-                    if (p.Y < prevPoint.Y)
+                    //string temp = "";
+                    //currPoint= new Point();
+                    POINT p = new POINT();
+
+                    if (GetCursorPos(out p))
                     {
-                        temp += "U";
-                        holdKey(Key.W, 100, bToken);
+                        //prevPoint = PointToScreen(currPoint);
+                        //writeToTbIn(p.Y.ToString());
+                        if (p.X < prevPoint.X)
+                        {
+                            //temp = "L";
+                            holdOnce(Key.A, mouseChkInterval);
+                            //pressOnce(Key.A);
+                        }
+                        if (p.X > prevPoint.X)
+                        {
+                            //temp += "R";
+                            holdOnce(Key.D, mouseChkInterval);
+                            //pressOnce(Key.D);
+                        }
+                        if (p.Y < prevPoint.Y)
+                        {
+                            //temp += "U";
+                            holdOnce(Key.W, mouseChkInterval);
+                            //pressOnce(Key.W);
+                        }
+                        if (p.Y > prevPoint.Y)
+                        {
+                            //temp += "D";
+                            holdOnce(Key.S, mouseChkInterval);
+                            //pressOnce(Key.S);
+                        }
+
+                        //writeToTbOut(temp);
                     }
-                    if (p.Y > prevPoint.Y)
-                    { temp += "D"; }
- 
-                        writeToTbOut(temp);
+                    prevPoint = p;
+                    chkMouseMv = false;
                 }
-                prevPoint = p;
+
             }
         }
         public MainWindow()
@@ -130,7 +145,18 @@ namespace presser
             stopKey = Key.V;
             pixelKey = Key.B;
             mouseSub();
-
+            mouseChkInterval = 100;
+            
+            mTimer = new System.Timers.Timer();
+            mTimer.Interval = mouseChkInterval;
+            mTimer.Elapsed += OnTimedEvent;
+            mTimer.Enabled = true;
+            chkMouseMv = false;
+            
+        }
+        public void OnTimedEvent(Object source, System.Timers.ElapsedEventArgs e)
+        {
+            chkMouseMv = true;
         }
         void btnStartClk()
         {
@@ -326,6 +352,17 @@ namespace presser
                 Thread.Sleep(inTimer);
             }
         }
+        void pressOnce(Key inKey)
+        {
+            DirectInput.PressKey(keyToShort(inKey));
+        }
+        void holdOnce(Key inKey,int inTimer)
+        {
+            DirectInput.PressAndHoldKey(keyToShort(inKey));
+            Thread.Sleep(inTimer);
+            DirectInput.ReleaseKey(keyToShort(inKey));
+        }
+
         void pressKey(Key inKey,int inTimer,CancellationToken t)
         {
             //writeToTbOut(isRunning.ToString());
