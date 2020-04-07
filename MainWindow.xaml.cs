@@ -20,19 +20,22 @@ using System.Xml;
 using Gma.System.MouseKeyHook;
 using System.Windows.Interop;
 using System.Timers;
+using System.IO;
+//using System.Drawing;
+
 namespace presser
 {
     public partial class MainWindow : Window
     {
         KeyboardListener KListener = new KeyboardListener();
-        bool isRunning = false, mouseTowasd = false;
+        bool isRunning = false, mouseTowasd = false,
+            leftHeld,rightHeld,upHeld,downHeld;
         public bool chkMouseMv=false;
         btnState button1State = btnState.off, button2State = btnState.off, 
             button3State= btnState.off, button4State = btnState.off,
             button5State = btnState.off, lClkState= btnState.off;
         int timer1, timer2, timer3, timer4, timer5, lClkTimer, xVal1, yVal1, xVal2, yVal2,
             xVal3, yVal3, xVal4, yVal4, xVal5, yVal5;
-        public static System.Timers.Timer mTimer;
         int mouseChkInterval;
         Key b1Key,b2Key,b3Key,b4Key,b5Key,startKey,stopKey,pixelKey;
         Color color1, color2, color3, color4, color5;
@@ -41,6 +44,8 @@ namespace presser
         string pressFocus;
         private IMouseEvents mEvents;
         public POINT prevPoint;
+        StringBuilder sb;
+        public static System.Timers.Timer msChkTmr;
         public struct POINT
         {
             public float X;
@@ -75,63 +80,106 @@ namespace presser
         static extern bool GetCursorPos(out POINT currPoint);
         private void mouseSub()
         {
-            writeToTbIn("sub");
+            //writeToTbIn("sub");
             mEvents = Hook.GlobalEvents();
             mEvents.MouseMoveExt += mouseMv;
         }
         private void mouseMv(Object sender,MouseEventExtArgs e)
         {
-            //todo timer
-            if (mouseTowasd==true && isRunning==true)
+            int upBound = 7,
+                downBound = 10,
+                leftBound = 11,
+                rightBound = 14;
+            if (mouseTowasd==true && isRunning && chkFocus()&&chkMouseMv==true)
             {
-                if (chkMouseMv==true)
+                Point p = new Point();
+                POINT p2 = new POINT();
+
+                if (GetCursorPos(out p2))
                 {
-                    //string temp = "";
-                    //currPoint= new Point();
-                    POINT p = new POINT();
-
-                    if (GetCursorPos(out p))
+                    //cursor Xpos goes 0-26
+                    //cursor Ypos goes 0-15
+                    p.Y= Math.Round(p2.Y * 1E43, 2, MidpointRounding.ToEven);
+                    p.X = Math.Round(p2.X* 1E43, 2,MidpointRounding.ToEven);
+                    if (p.X <= leftBound) //mouse is left
                     {
-                        //prevPoint = PointToScreen(currPoint);
-                        //writeToTbIn(p.Y.ToString());
-                        if (p.X < prevPoint.X)
+                        if (rightHeld==true) //if rightheld release
                         {
-                            //temp = "L";
-                            holdOnce(Key.A, mouseChkInterval);
-                            //pressOnce(Key.A);
+                            rightHeld = false;
+                            DirectInput.ReleaseKey(keyToShort(Key.D));
                         }
-                        if (p.X > prevPoint.X)
+                        if (leftHeld == false) //if  not holding left hold left
                         {
-                            //temp += "R";
-                            holdOnce(Key.D, mouseChkInterval);
-                            //pressOnce(Key.D);
+                            leftHeld = true;
+                            DirectInput.PressAndHoldKey(keyToShort(Key.A));
                         }
-                        if (p.Y < prevPoint.Y)
-                        {
-                            //temp += "U";
-                            holdOnce(Key.W, mouseChkInterval);
-                            //pressOnce(Key.W);
-                        }
-                        if (p.Y > prevPoint.Y)
-                        {
-                            //temp += "D";
-                            holdOnce(Key.S, mouseChkInterval);
-                            //pressOnce(Key.S);
-                        }
-
-                        //writeToTbOut(temp);
+                    } 
+                    if (p.X >leftBound && p.X<rightBound)
+                    {
+                        rightHeld = false;
+                        leftHeld = false;
+                        DirectInput.ReleaseKey(keyToShort(Key.D));
+                        DirectInput.ReleaseKey(keyToShort(Key.A));
                     }
-                    prevPoint = p;
-                    chkMouseMv = false;
+                    if (p.X>=rightBound) //mouse is right
+                    {
+                        if (leftHeld == true) //if rightheld release
+                        {
+                            leftHeld = false;
+                            DirectInput.ReleaseKey(keyToShort(Key.A));
+                        }
+                        if (rightHeld == false) //if  not holding left hold left
+                        {
+                            rightHeld = true;
+                            DirectInput.PressAndHoldKey(keyToShort(Key.D));
+                        }
+                    } 
+                    
+                    if (p.Y<=upBound)
+                    { 
+                        if (upHeld == false)
+                        {
+                            upHeld = true;
+                            DirectInput.PressAndHoldKey(keyToShort(Key.W));
+                        }
+                        if (downHeld==true)
+                        {
+                            downHeld = false;
+                            DirectInput.ReleaseKey(keyToShort(Key.S));
+                        }
+                    }
+                    if (p.Y > upBound && p.Y < downBound)
+                    {
+                        upHeld = false;
+                        downHeld = false;
+                        DirectInput.ReleaseKey(keyToShort(Key.W));
+                        DirectInput.ReleaseKey(keyToShort(Key.S));
+                    }
+                    if (p.Y>=downBound)
+                    {
+                        if (downHeld == false)
+                        {
+                            downHeld = true;
+                            DirectInput.PressAndHoldKey(keyToShort(Key.S));
+                        }
+                        if (upHeld==true)
+                        {
+                            upHeld = false;
+                            DirectInput.ReleaseKey(keyToShort(Key.W));
+                        }
+                    }
                 }
-
+                string s = p.X + "|" + p.Y + "\n";
+                File.AppendAllText("D:\\downloads\\test.txt", s);
+                chkMouseMv = false;
             }
+
         }
         public MainWindow()
         {
             InitializeComponent();
             KListener.KeyDown += new RawKeyEventHandler(KListener_KeyDown);
-            pressFocus = "*test.txt - Notepad";
+            pressFocus = "*test"; //.txt - Notepad";
             //pressFocus = "Time Clickers";
             //pressFocus = "Diablo III";
             b1Key = Key.D1;
@@ -141,127 +189,140 @@ namespace presser
             b5Key = Key.D5;
             focusTrgt.Text = pressFocus;
 
+            leftHeld = false;
+            rightHeld = false;
+            upHeld = false;
+            downHeld = false;
+
             startKey = Key.C;
             stopKey = Key.V;
             pixelKey = Key.B;
             mouseSub();
             mouseChkInterval = 100;
             
-            mTimer = new System.Timers.Timer();
-            mTimer.Interval = mouseChkInterval;
-            mTimer.Elapsed += OnTimedEvent;
-            mTimer.Enabled = true;
+            msChkTmr=new System.Timers.Timer();
+            msChkTmr.Interval = mouseChkInterval;
+            msChkTmr.Elapsed += OnTimedEvent;
+            msChkTmr.Enabled = true;
             chkMouseMv = false;
-            
+            sb = new StringBuilder();
         }
-        public void OnTimedEvent(Object source, System.Timers.ElapsedEventArgs e)
+        public void OnTimedEvent(Object source, ElapsedEventArgs e)
         {
             chkMouseMv = true;
         }
         void btnStartClk()
         {
-            writeToTbIn("started ");
-            if(!isRunning)
+
+            if (chkFocus())
             {
-                bTokenSource = new CancellationTokenSource();
-                CancellationToken bToken = bTokenSource.Token;
-                isRunning = true;
-                isRunningBtn.Content = "on";
-                string err = string.Empty;
-                try
+                writeToTbIn("started ");
+
+                if (!isRunning)
                 {
-                    //MessageBox.Show("s" + button1State.ToString());
-                    switch (button1State)
+                    bTokenSource = new CancellationTokenSource();
+                    CancellationToken bToken = bTokenSource.Token;
+                    isRunning = true;
+                    isRunningBtn.Content = "on";
+                    string err = string.Empty;
+                    try
                     {
-                        case btnState.off:
-                            break;
-                        case btnState.press:                        
-                                tlist.Add( Task.Run(() => pressKey(b1Key, timer1,bToken), bToken));                        
-                            break;
-                        case btnState.hold:
+                        //MessageBox.Show("s" + button1State.ToString());
+                        switch (button1State)
+                        {
+                            case btnState.off:
+                                break;
+                            case btnState.press:
+                                tlist.Add(Task.Run(() => pressKey(b1Key, timer1, bToken), bToken));
+                                break;
+                            case btnState.hold:
                                 Task.Run(() => holdKey(b1Key, timer1, bToken), bToken);
-                            break;
-                        case btnState.pixelChange:
+                                break;
+                            case btnState.pixelChange:
                                 Task.Run(() => pixelPress(xVal1, yVal1, color1, b1Key, timer1, bToken), bToken);
-                            break;
-                    }
-                    switch (button2State)
-                    {
-                        case btnState.off:
-                            break;
-                        case btnState.press:
+                                break;
+                        }
+                        switch (button2State)
+                        {
+                            case btnState.off:
+                                break;
+                            case btnState.press:
                                 Task.Run(() => pressKey(b2Key, timer2, bToken), bToken);
-                            break;
-                        case btnState.hold:
+                                break;
+                            case btnState.hold:
                                 Task.Run(() => holdKey(b2Key, timer2, bToken), bToken);
-                            break;
-                        case btnState.pixelChange:
+                                break;
+                            case btnState.pixelChange:
                                 Task.Run(() => pixelPress(xVal2, yVal2, color2, b2Key, timer2, bToken), bToken);
-                            break;
-                    }
-                    switch (button3State)
-                    {
-                        case btnState.off:
-                            break;
-                        case btnState.press:
+                                break;
+                        }
+                        switch (button3State)
+                        {
+                            case btnState.off:
+                                break;
+                            case btnState.press:
                                 Task.Run(() => pressKey(b3Key, timer3, bToken), bToken);
-                            break;
-                        case btnState.hold:
+                                break;
+                            case btnState.hold:
                                 Task.Run(() => holdKey(b3Key, timer3, bToken), bToken);
-                            break;
-                        case btnState.pixelChange:
+                                break;
+                            case btnState.pixelChange:
                                 Task.Run(() => pixelPress(xVal3, yVal3, color3, b3Key, timer3, bToken), bToken);
-                            break;
-                    }
-                    switch (button4State)
-                    {
-                        case btnState.off:
-                            break;
-                        case btnState.press:
+                                break;
+                        }
+                        switch (button4State)
+                        {
+                            case btnState.off:
+                                break;
+                            case btnState.press:
                                 Task.Run(() => pressKey(b4Key, timer4, bToken), bToken);
-                            break;
-                        case btnState.hold:
+                                break;
+                            case btnState.hold:
                                 Task.Run(() => holdKey(b4Key, timer4, bToken), bToken);
-                            break;
-                        case btnState.pixelChange:
+                                break;
+                            case btnState.pixelChange:
                                 Task.Run(() => pixelPress(xVal4, yVal4, color4, b4Key, timer4, bToken), bToken);
-                            break;
-                    }
-                    switch (button5State)
-                    {
-                        case btnState.off:
-                            break;
-                        case btnState.press:
+                                break;
+                        }
+                        switch (button5State)
+                        {
+                            case btnState.off:
+                                break;
+                            case btnState.press:
                                 Task.Run(() => pressKey(b5Key, timer5, bToken), bToken);
-                            break;
-                        case btnState.hold:
+                                break;
+                            case btnState.hold:
                                 Task.Run(() => holdKey(b5Key, timer5, bToken), bToken);
-                            break;
-                        case btnState.pixelChange:
+                                break;
+                            case btnState.pixelChange:
                                 Task.Run(() => pixelPress(xVal5, yVal5, color5, b5Key, timer5, bToken), bToken);
-                            break;
+                                break;
+                        }
+                        switch (lClkState)
+                        {
+                            case btnState.off:
+                                break;
+                            case btnState.press:
+                                Task.Run(() => leftClk(timer1, bToken), bToken);
+                                break;
+                        }
                     }
-                    switch (lClkState)
+                    catch (Exception ex)
                     {
-                        case btnState.off:
-                            break;
-                        case btnState.press:
-                                Task.Run(() => leftClk(timer1,bToken), bToken);
-                            break;
+                        err = ex.ToString();
                     }
-                }
-                catch (Exception ex)
-                {
-                    err = ex.ToString();
-                }
-                finally
-                {
-                    if (err != string.Empty)
+                    finally
                     {
-                        MessageBox.Show(err);
+                        if (err != string.Empty)
+                        {
+                            MessageBox.Show(err);
+                        }
                     }
                 }
-                }
+            }else
+            {
+                writeToTbIn("focus fail ");
+            }
         }
         bool chkFocus()
         {
@@ -276,19 +337,22 @@ namespace presser
         }
         void btnStopClk()
         {            
-            isRunning = false;
-            bTokenSource.Cancel();
-            writeToTbIn("stopped");
-            Dispatcher.Invoke(() => { isRunningBtn.Content = "off"; });
-            
-            //bTokenSource.Dispose();
+            if (isRunning==true)
+            {
+                isRunning = false;
+                bTokenSource.Cancel();
+                writeToTbIn("stopped");
+                Dispatcher.Invoke(() => { isRunningBtn.Content = "off"; });
 
-            DirectInput.ReleaseKey(keyToShort(b1Key));
-            DirectInput.ReleaseKey(keyToShort(b2Key));
-            DirectInput.ReleaseKey(keyToShort(b3Key));
-            DirectInput.ReleaseKey(keyToShort(b4Key));
-            DirectInput.ReleaseKey(keyToShort(b5Key));
-            DirectInput.LeftMouseClickRelease();
+                //bTokenSource.Dispose();
+
+                DirectInput.ReleaseKey(keyToShort(b1Key));
+                DirectInput.ReleaseKey(keyToShort(b2Key));
+                DirectInput.ReleaseKey(keyToShort(b3Key));
+                DirectInput.ReleaseKey(keyToShort(b4Key));
+                DirectInput.ReleaseKey(keyToShort(b5Key));
+                DirectInput.LeftMouseClickRelease();
+            }
         }
         public void writeToTbIn(string inStr)
         {
@@ -305,10 +369,11 @@ namespace presser
         private static extern int GetWindowText(int hWnd, StringBuilder text, int count);
         private string windowFocus()
         {
-            StringBuilder s = new StringBuilder(256);
-            if(MainWindow.GetWindowText(MainWindow.GetForegroundWindow(),s,256)>0)
+            StringBuilder s = new StringBuilder(256);            
+            if (MainWindow.GetWindowText(MainWindow.GetForegroundWindow(),s,256)>0)
             {
-                    return s.ToString();
+                //writeToTbIn(s.ToString().Substring(0, 5));
+                return s.ToString().Substring(0,5);
             }
             return "";
         }
@@ -352,17 +417,6 @@ namespace presser
                 Thread.Sleep(inTimer);
             }
         }
-        void pressOnce(Key inKey)
-        {
-            DirectInput.PressKey(keyToShort(inKey));
-        }
-        void holdOnce(Key inKey,int inTimer)
-        {
-            DirectInput.PressAndHoldKey(keyToShort(inKey));
-            Thread.Sleep(inTimer);
-            DirectInput.ReleaseKey(keyToShort(inKey));
-        }
-
         void pressKey(Key inKey,int inTimer,CancellationToken t)
         {
             //writeToTbOut(isRunning.ToString());
@@ -512,7 +566,6 @@ namespace presser
         {
             pixelKey = stringToKey(pixelKeyTxt.Text);
         }
-
         private void mouseToWasdChk_Checked(object sender, RoutedEventArgs e)
         {
             if( mouseToWasdChk.IsChecked==true)
@@ -524,7 +577,6 @@ namespace presser
                 mouseTowasd = false;
             }
         }
-
         private void Application_Exit(object sender, ExitEventArgs e)
         {
             KListener.Dispose();
