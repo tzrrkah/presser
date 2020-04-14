@@ -41,6 +41,7 @@ namespace presser
         Color color1, color2, color3, color4, color5;
         List<Task> tlist = new List<Task>();
         CancellationTokenSource bTokenSource; // = new CancellationTokenSource();
+        CancellationTokenSource mTokenSource;
         string pressFocus;
         private IMouseEvents mEvents;
         public POINT prevPoint;
@@ -86,19 +87,28 @@ namespace presser
         }
         private void mouseMv(Object sender,MouseEventExtArgs e)
         {
-            int upBound = 7,
-                downBound = 10,
-                leftBound = 11,
-                rightBound = 14;
+            //cursor Xpos goes 0-26~
+            //cursor Ypos goes 0-15~
+            int leftBound = 10,
+                halfLeft = 12,
+                halfRight = 14,
+                rightBound = 16,
+
+                upBound = 7,
+                halfUp = 8,                
+                halfDown = 9,
+                downBound = 10
+                ;
+            
+            
             if (mouseTowasd==true && isRunning && chkFocus()&&chkMouseMv==true)
             {
                 Point p = new Point();
                 POINT p2 = new POINT();
-
+                CancellationToken mToken = mTokenSource.Token;
+                mTokenSource.Cancel();
                 if (GetCursorPos(out p2))
                 {
-                    //cursor Xpos goes 0-26
-                    //cursor Ypos goes 0-15
                     p.Y= Math.Round(p2.Y * 1E43, 2, MidpointRounding.ToEven);
                     p.X = Math.Round(p2.X* 1E43, 2,MidpointRounding.ToEven);
                     if (p.X <= leftBound) //mouse is left
@@ -113,22 +123,40 @@ namespace presser
                             leftHeld = true;
                             DirectInput.PressAndHoldKey(keyToShort(Key.A));
                         }
-                    } 
-                    if (p.X >leftBound && p.X<rightBound)
+                    } else if (p.X >leftBound && p.X <=halfLeft)
+                    {
+                        //stop left and right and press half left
+                        rightHeld = false;
+                        leftHeld = true;
+                        DirectInput.ReleaseKey(keyToShort(Key.D));
+                        DirectInput.ReleaseKey(keyToShort(Key.A));
+                        DirectInput.PressAndHoldKey(keyToShort(Key.A));
+                        //Task.Run(() => holdKey(Key.A, mouseChkInterval/2, mToken), mToken);
+                    } else if (p.X >halfLeft && p.X<halfRight) //center stop
                     {
                         rightHeld = false;
                         leftHeld = false;
                         DirectInput.ReleaseKey(keyToShort(Key.D));
                         DirectInput.ReleaseKey(keyToShort(Key.A));
-                    }
-                    if (p.X>=rightBound) //mouse is right
+                    } else if (p.X >= halfRight && p.X < rightBound)
                     {
-                        if (leftHeld == true) //if rightheld release
+                        //stop left and right and press half right
+                        rightHeld = false;
+                        leftHeld = false;
+                        DirectInput.ReleaseKey(keyToShort(Key.D));
+                        DirectInput.ReleaseKey(keyToShort(Key.A));
+                        DirectInput.PressAndHoldKey(keyToShort(Key.D));
+
+                        //Task.Run(() => holdKey(Key.D, mouseChkInterval / 2, mToken), mToken);
+                    }
+                    else if (p.X>=rightBound) //mouse is right
+                    {
+                        if (leftHeld == true) //if leftheld release
                         {
                             leftHeld = false;
                             DirectInput.ReleaseKey(keyToShort(Key.A));
                         }
-                        if (rightHeld == false) //if  not holding left hold left
+                        if (rightHeld == false) //if  not holding right  hold right
                         {
                             rightHeld = true;
                             DirectInput.PressAndHoldKey(keyToShort(Key.D));
@@ -169,8 +197,8 @@ namespace presser
                         }
                     }
                 }
-                string s = p.X + "|" + p.Y + "\n";
-                File.AppendAllText("D:\\downloads\\test.txt", s);
+                //string s = p.X + "|" + p.Y + "\n";
+                //File.AppendAllText("D:\\downloads\\test.txt", s);
                 chkMouseMv = false;
             }
 
@@ -199,8 +227,9 @@ namespace presser
             pixelKey = Key.B;
             mouseSub();
             mouseChkInterval = 100;
+            mTokenSource = new CancellationTokenSource();
             
-            msChkTmr=new System.Timers.Timer();
+            msChkTmr =new System.Timers.Timer();
             msChkTmr.Interval = mouseChkInterval;
             msChkTmr.Elapsed += OnTimedEvent;
             msChkTmr.Enabled = true;
